@@ -26,8 +26,8 @@ export default function SearchBar({ onSearch }: SearchBarProps) {
   };
 
   return (
-    <div className={isHomePage ? "w-full" : "fixed bottom-0 left-0 right-0 p-4 bg-[#1C1C1F] border-t border-[#2C2C30]"}>
-      <form onSubmit={handleSubmit} className={isHomePage ? "w-full" : "max-w-2xl mx-auto"}>
+    <div className={isHomePage ? "w-full" : "fixed bottom-0 left-0 right-0 bg-[#1C1C1F] p-4"}>
+      <form onSubmit={handleSubmit} className={isHomePage ? "w-full" : "relative max-w-3xl mx-auto"}>
         <div className="relative">
           <input 
             type="text"
@@ -38,8 +38,7 @@ export default function SearchBar({ onSearch }: SearchBarProps) {
           />
           <button 
             type="submit" 
-            className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 rounded-md
-                     hover:-translate-y-1/2 hover:translate-x-1 transition-transform duration-150"
+            className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-gray-400 hover:text-white transition-all duration-200 hover:scale-110"
           >
             <svg
               width="20"
