@@ -38,36 +38,65 @@ export async function POST(req: Request) {
         paperUrl = `https://arxiv.org/abs/${result.metadata.paperId}`;
       } else if (!paperUrl) {
         // If we have neither, create a search URL
-        paperUrl = `https://arxiv.org/search/?query=${encodeURIComponent(result.metadata.title)}&searchtype=title`;
+        const title = Array.isArray(result.metadata.title) 
+          ? result.metadata.title[0] 
+          : result.metadata.title;
+        paperUrl = `https://arxiv.org/search/?query=${encodeURIComponent(title)}&searchtype=title`;
       }
+
+      // Ensure all metadata fields are in the correct format
+      const title = Array.isArray(result.metadata.title) 
+        ? result.metadata.title[0] 
+        : result.metadata.title;
+      const authors = Array.isArray(result.metadata.authors) 
+        ? result.metadata.authors 
+        : [result.metadata.authors].filter(Boolean);
+      const categories = Array.isArray(result.metadata.categories) 
+        ? result.metadata.categories 
+        : [result.metadata.categories].filter(Boolean);
 
       return {
         id: result.metadata.paperId || '',
         url: paperUrl,
-        title: result.metadata.title,
-        authors: result.metadata.authors,
-        summary: result.metadata.summary,
-        content: result.metadata.content,
-        categories: result.metadata.categories,
+        title,
+        authors,
+        summary: result.metadata.summary || '',
+        content: result.metadata.content || '',
+        categories,
         published: result.metadata.published
       };
     });
 
-    // Generate research insight using GPT-4
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4",
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { 
-          role: "user", 
-          content: `Research Query: ${query}\n\nPapers:\n${JSON.stringify(papers, null, 2)}` 
-        }
-      ],
-      temperature: 0.7
+    // Create messages for chat completion
+    const messages = [
+      { role: 'system', content: SYSTEM_PROMPT },
+      {
+        role: 'user',
+        content: `Here is the user's query: "${query}"
+
+Here are the relevant papers:
+
+${papers.map((paper, index) => `
+[${index + 1}] "${paper.title}"
+Authors: ${paper.authors.join(', ')}
+URL: ${paper.url}
+Summary: ${paper.summary}
+`).join('\n')}
+
+Please analyze these papers in relation to the query. Focus on the key findings, relationships between papers, and research implications.`,
+      },
+    ];
+
+    // Get chat completion from OpenAI
+    const chatCompletion = await openai.chat.completions.create({
+      messages: messages as any,
+      model: 'gpt-4-1106-preview',
+      temperature: 0.7,
+      max_tokens: 1000,
     });
 
     return NextResponse.json({
-      answer: completion.choices[0].message.content,
+      answer: chatCompletion.choices[0].message.content,
       papers: papers.map(paper => ({
         id: paper.id,
         url: paper.url,
@@ -78,11 +107,10 @@ export async function POST(req: Request) {
         published: paper.published
       }))
     });
-    
-  } catch (error) {
-    console.error('API Error:', error);
+  } catch (error: any) {
+    console.error('Error in chat route:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to process research query' }, 
+      { error: error.message || 'An error occurred' },
       { status: 500 }
     );
   }
