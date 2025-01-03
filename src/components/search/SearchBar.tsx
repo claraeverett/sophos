@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
+import { addToHistory } from '@/lib/history';
 
 interface SearchBarProps {
   onSearch?: (query: string) => void;
@@ -13,13 +14,14 @@ export default function SearchBar({ onSearch }: SearchBarProps) {
   const pathname = usePathname();
   const isHomePage = pathname === '/';
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (query.trim()) {
+      addToHistory(query.trim());
       if (isHomePage) {
-        router.push(`/results?q=${encodeURIComponent(query)}`);
+        router.push(`/results?q=${encodeURIComponent(query.trim())}`);
       } else {
-        onSearch?.(query);
+        onSearch?.(query.trim());
         setQuery(''); // Clear the search bar after submission
       }
     }
