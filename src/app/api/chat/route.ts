@@ -12,10 +12,21 @@ Provide clear insights and connections between papers. Focus on:
 
 Base your analysis only on the provided papers and their content.`;
 
+if (!process.env.OPENAI_API_KEY) {
+  throw new Error('Missing OPENAI_API_KEY environment variable');
+}
+
 export async function POST(req: Request) {
   try {
     const { query } = await req.json();
     
+    if (!query || typeof query !== 'string') {
+      return NextResponse.json(
+        { error: 'Query must be a non-empty string' },
+        { status: 400 }
+      );
+    }
+
     // Search vector store
     const searchResults = await queryVectorStore(query, 5);
     
@@ -27,83 +38,71 @@ export async function POST(req: Request) {
     }
 
     // Format papers for GPT
-    const papers = searchResults.map(result => {
-      if (!result.metadata) {
-        throw new Error('Paper metadata is missing');
-      }
+    const papers = searchResults.map((result, index) => {
+      const metadata = result.metadata;
+      const score = result.score;
 
       // Ensure we have a valid URL for the paper
-      let paperUrl = result.metadata.url;
-      if (!paperUrl && result.metadata.paperId) {
-        // If we have a paperId but no URL, construct the arXiv URL
-        paperUrl = `https://arxiv.org/abs/${result.metadata.paperId}`;
-      } else if (!paperUrl) {
-        // If we have neither, create a search URL
-        const title = Array.isArray(result.metadata.title) 
-          ? result.metadata.title[0] 
-          : result.metadata.title;
-        paperUrl = `https://arxiv.org/search/?query=${encodeURIComponent(title)}&searchtype=title`;
+      let paperUrl = metadata.url;
+      if (!paperUrl && metadata.paperId) {
+        paperUrl = `https://arxiv.org/abs/${metadata.paperId}`;
       }
 
-      // Ensure all metadata fields are in the correct format
-      const title = Array.isArray(result.metadata.title) 
-        ? result.metadata.title[0] 
-        : result.metadata.title;
-      const authors = Array.isArray(result.metadata.authors) 
-        ? result.metadata.authors 
-        : [result.metadata.authors].filter(Boolean);
-      const categories = Array.isArray(result.metadata.categories) 
-        ? result.metadata.categories 
-        : [result.metadata.categories].filter(Boolean);
-
       return {
-        id: result.metadata.paperId || '',
+        title: metadata.title,
+        authors: metadata.authors.join(', '),
+        categories: metadata.categories.join(', '),
+        summary: metadata.summary || '',
+        published: metadata.published,
         url: paperUrl,
-        title,
-        authors,
-        summary: result.metadata.summary || '',
-        categories,
-        published: result.metadata.published || ''
+        score: score
       };
     });
 
-    // Create messages for chat completion
+    // Prepare the message for GPT
+    const paperDescriptions = papers.map((paper, index) => `
+Paper ${index + 1}:
+Title: ${paper.title}
+Authors: ${paper.authors}
+Categories: ${paper.categories}
+Published: ${paper.published}
+Summary: ${paper.summary}
+URL: ${paper.url}
+Relevance Score: ${paper.score.toFixed(3)}
+`).join('\n');
+
     const messages = [
       { role: 'system', content: SYSTEM_PROMPT },
-      {
-        role: 'user',
-        content: `Here is the user's query: "${query}"
-
-Here are the relevant papers:
-
-${papers.map((paper, index) => `
-[${index + 1}] "${paper.title}"
-Authors: ${paper.authors.join(', ')}
-URL: ${paper.url}
-Summary: ${paper.summary}
-`).join('\n')}
-
-Please analyze these papers in relation to the query. Focus on the key findings, relationships between papers, and research implications.`,
-      },
+      { role: 'user', content: `Query: ${query}\n\nRelevant Papers:\n${paperDescriptions}` }
     ];
 
-    // Get chat completion from OpenAI
-    const chatCompletion = await openai.chat.completions.create({
-      messages: messages as any,
-      model: 'gpt-4-1106-preview',
+    // Get response from GPT
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4',
+      messages: messages,
       temperature: 0.7,
       max_tokens: 1000,
     });
 
+    const response = completion.choices[0]?.message?.content;
+
+    if (!response) {
+      return NextResponse.json(
+        { error: 'Failed to generate response' },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json({
-      papers,
-      analysis: chatCompletion.choices[0].message.content,
+      response,
+      papers
     });
+
   } catch (error: any) {
     console.error('Error in chat route:', error);
     return NextResponse.json(
-      { error: error.message || 'An error occurred' },
-      { status: 500 }
+      { error: error.message || 'Internal server error' },
+      { status: error.status || 500 }
     );
   }
 }
