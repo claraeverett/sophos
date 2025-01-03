@@ -1,10 +1,8 @@
-import * as dotenv from 'dotenv';
 import { Pinecone } from '@pinecone-database/pinecone';
 import { OpenAIEmbeddings } from '@langchain/openai';
 import { getClientCachedData, setClientCachedData } from './cache';
 
-// Load environment variables from .env.local
-dotenv.config({ path: '.env.local' });
+const PINECONE_INDEX_NAME = 'perplexity';
 
 if (!process.env.PINECONE_API_KEY) {
   throw new Error('Missing PINECONE_API_KEY environment variable');
@@ -13,8 +11,6 @@ if (!process.env.PINECONE_API_KEY) {
 if (!process.env.OPENAI_API_KEY) {
   throw new Error('Missing OPENAI_API_KEY environment variable');
 }
-
-const PINECONE_INDEX_NAME = 'perplexity';
 
 // Initialize Pinecone client
 const pinecone = new Pinecone({
