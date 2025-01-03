@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { openai } from '@/lib/openai';
 import { queryVectorStore } from '@/lib/pinecone';
+import type { ArxivMetadata } from '@/lib/pinecone';
 
 const SYSTEM_PROMPT = `You are a research assistant analyzing scientific papers. 
 Provide clear insights and connections between papers. Focus on:
@@ -61,9 +62,8 @@ export async function POST(req: Request) {
         title,
         authors,
         summary: result.metadata.summary || '',
-        content: result.metadata.content || '',
         categories,
-        published: result.metadata.published
+        published: result.metadata.published || ''
       };
     });
 
@@ -96,16 +96,8 @@ Please analyze these papers in relation to the query. Focus on the key findings,
     });
 
     return NextResponse.json({
-      answer: chatCompletion.choices[0].message.content,
-      papers: papers.map(paper => ({
-        id: paper.id,
-        url: paper.url,
-        title: paper.title,
-        abstract: paper.summary,
-        authors: paper.authors,
-        categories: paper.categories,
-        published: paper.published
-      }))
+      papers,
+      analysis: chatCompletion.choices[0].message.content,
     });
   } catch (error: any) {
     console.error('Error in chat route:', error);
