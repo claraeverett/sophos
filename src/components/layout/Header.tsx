@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import HistorySidebar from '../history/HistorySidebar';
+import Link from 'next/link';
 
 interface HeaderProps {
   showHistory?: boolean;
@@ -81,27 +82,24 @@ const mockConversations = [
 ];
 
 export default function Header({ showHistory = false }: HeaderProps) {
-  const router = useRouter();
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-
-  const handleSelectConversation = (conversation: Conversation) => {
-    router.push(`/results?id=${conversation.id}&q=${encodeURIComponent(conversation.title)}`);
-    setIsHistoryOpen(false);
-  };
+  const router = useRouter();
 
   const handleNewChat = () => {
     router.push('/');
   };
 
+  const handleSelectConversation = (conversation: Conversation) => {
+    setIsHistoryOpen(false);
+    // Handle conversation selection
+  };
+
   return (
     <>
-      <nav className="flex justify-between items-center px-6 py-4">
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-3">
-            <button 
-              onClick={handleNewChat}
-              className="flex items-center gap-3 text-white hover:opacity-80 transition-opacity"
-            >
+      <header className="fixed top-0 left-0 right-0 z-50 bg-[#1C1C1F]">
+        <div className="flex justify-between items-center py-4 px-0 max-w-none mx-4">
+          <div className="flex items-center gap-6 -ml-8">
+            <Link href="/" className="flex items-center gap-3 pl-8">
               <div className="text-3xl">
                 <svg 
                   width="32" 
@@ -112,53 +110,57 @@ export default function Header({ showHistory = false }: HeaderProps) {
                   strokeWidth="1.75" 
                   strokeLinecap="round" 
                   strokeLinejoin="round"
+                  className="text-white"
                 >
                   <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z" />
                   <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z" />
                 </svg>
               </div>
-              <span className="text-2xl font-medium">sophos</span>
-            </button>
+              <span className="text-white text-2xl font-medium">sophos</span>
+            </Link>
           </div>
-          {showHistory && (
-            <button 
-              onClick={handleNewChat}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#212224] hover:bg-[#2A2B2D] transition-colors text-gray-300 hover:text-white text-sm"
-            >
-              <svg 
-                width="16" 
-                height="16" 
-                viewBox="0 0 24 24" 
-                fill="none" 
-                stroke="currentColor" 
-                strokeWidth="2"
-                className="relative top-[0.5px]"
+          <div className="flex items-center gap-4">
+            {showHistory && (
+              <button 
+                onClick={handleNewChat}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#212224] hover:bg-[#2A2B2D] transition-colors text-gray-300 hover:text-white text-sm"
               >
-                <path d="M12 5v14M5 12h14" />
-              </svg>
-              New
-            </button>
-          )}
+                <svg 
+                  width="16" 
+                  height="16" 
+                  viewBox="0 0 24 24" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  strokeWidth="2"
+                  className="relative top-[0.5px]"
+                >
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+                New
+              </button>
+            )}
+            {showHistory && (
+              <button 
+                onClick={() => setIsHistoryOpen(true)}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
+            )}
+          </div>
         </div>
-        {showHistory && (
-          <button 
-            onClick={() => setIsHistoryOpen(true)}
-            className="text-gray-400 hover:text-white transition-colors"
-          >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M12 8v4l3 3" />
-              <path d="M3.05 11a9 9 0 1 1 .5 4" />
-            </svg>
-          </button>
-        )}
-      </nav>
+      </header>
 
-      <HistorySidebar
-        isOpen={isHistoryOpen}
-        onClose={() => setIsHistoryOpen(false)}
-        conversations={mockConversations}
-        onSelectConversation={handleSelectConversation}
-      />
+      {showHistory && (
+        <HistorySidebar
+          isOpen={isHistoryOpen}
+          onClose={() => setIsHistoryOpen(false)}
+          conversations={mockConversations}
+          onSelectConversation={handleSelectConversation}
+        />
+      )}
     </>
   );
 }

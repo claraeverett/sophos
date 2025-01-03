@@ -3,10 +3,10 @@ import Header from '@/components/layout/Header';
 import SearchBar from '@/components/search/SearchBar';
 
 const suggestions = [
-  "what is farfalle?",
-  "openai scarlett johansson?",
-  "what is groq?",
-  "what happened to ilya?"
+  "Tell me about machine learning",
+  "What are transformers in deep learning?",
+  "Latest research in quantum computing",
+  "Explain neural networks"
 ];
 
 export default function Home() {
