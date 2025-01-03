@@ -1,0 +1,36 @@
+@import url('https://fonts.cdnfonts.com/css/geist-sans');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 255, 255, 255;
+  --background-rgb: 25, 26, 27;
+}
+
+html {
+  background: #191A1B;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background-color: #191A1B;
+  font-family: 'Geist Sans', sans-serif;
+}
+
+.suggestion {
+  @apply flex items-center gap-2 text-gray-400 hover:text-white transition-colors cursor-pointer text-sm py-1;
+}
+
+.suggestion-arrow {
+  @apply text-xs opacity-60;
+}
+
+.submit-arrow {
+  transition: transform 0.2s ease;
+}
+
+.submit-arrow:hover {
+  transform: translateX(2px);
+}
