@@ -121,19 +121,27 @@ export async function queryVectorStore(query: string, topK: number = 3): Promise
     includeMetadata: true,
   });
 
-  return results.matches?.map(match => {
+  if (!results.matches) return [];
+
+  return results.matches.map(match => {
+    if (!match.score || !match.metadata) {
+      throw new Error('Invalid match data from Pinecone');
+    }
+
     const metadata = match.metadata as Record<string, any>;
+    const arxivMetadata: ArxivMetadata = {
+      paperId: metadata.paperId || '',
+      title: metadata.title || '',
+      authors: Array.isArray(metadata.authors) ? metadata.authors : [],
+      categories: Array.isArray(metadata.categories) ? metadata.categories : [],
+      published: metadata.published || '',
+      summary: metadata.summary || '',
+      url: metadata.url
+    };
+
     return {
       score: match.score,
-      metadata: {
-        paperId: metadata.paperId || '',
-        title: metadata.title || '',
-        authors: Array.isArray(metadata.authors) ? metadata.authors : [],
-        categories: Array.isArray(metadata.categories) ? metadata.categories : [],
-        published: metadata.published || '',
-        summary: metadata.summary,
-        url: metadata.url
-      }
+      metadata: arxivMetadata
     };
-  }) || [];
+  });
 }
