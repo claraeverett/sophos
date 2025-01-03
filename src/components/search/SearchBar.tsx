@@ -1,14 +1,44 @@
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { styles } from '@/styles/components/styles';
 
-export default function SearchBar() {
+interface SearchBarProps {
+  onSubmit?: (query: string) => void;
+}
+
+export default function SearchBar({ onSubmit }: SearchBarProps) {
+  const [query, setQuery] = useState('');
+  const router = useRouter();
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (query.trim()) {
+      if (onSubmit) {
+        onSubmit(query);
+        setQuery(''); // Clear input after submission
+      } else {
+        router.push(`/results?q=${encodeURIComponent(query)}`);
+      }
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    // No implementation provided
+  };
+
   return (
-    <div className={styles.search.container}>
+    <form onSubmit={handleSubmit} className={styles.search.container}>
       <input 
         type="text"
-        placeholder="Ask anything..."
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        onKeyDown={handleKeyDown}
         className={styles.search.input}
+        placeholder="Ask the research..."
       />
-      <button className={styles.search.submitButton}>
+      <button type="submit" className={styles.search.submitButton}>
         <svg 
           className="submit-arrow"
           width="20" 
@@ -23,6 +53,6 @@ export default function SearchBar() {
           <path d="M5 12h14m-7-7l7 7-7 7" />
         </svg>
       </button>
-    </div>
+    </form>
   );
 }
