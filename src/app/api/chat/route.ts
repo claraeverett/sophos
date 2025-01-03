@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { openai } from '@/lib/openai';
+import { getOpenAIClient } from '@/lib/openai';
 import { queryVectorStore } from '@/lib/pinecone';
 import type { ChatCompletionMessageParam } from 'openai/resources/chat';
 
@@ -15,21 +15,20 @@ Provide clear insights and connections between papers. Focus on:
 
 Base your analysis only on the provided papers and their content.`;
 
-if (!process.env.OPENAI_API_KEY) {
-  throw new Error('Missing OPENAI_API_KEY environment variable');
-}
-
 export async function POST(req: Request) {
   try {
     const body = await req.json();
     const query = body?.query;
     
-    if (!query || typeof query !== 'string') {
+    if (!query || typeof query !== 'string' || query.trim().length === 0) {
       return new NextResponse(
         JSON.stringify({ error: 'Query must be a non-empty string' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
+
+    // Get OpenAI client (this will throw if OPENAI_API_KEY is missing)
+    const openai = getOpenAIClient();
 
     // Search vector store
     const searchResults = await queryVectorStore(query, 5);
@@ -88,25 +87,27 @@ Relevance Score: ${paper.score.toFixed(3)}
       max_tokens: 1000,
     });
 
-    const response = completion.choices[0]?.message?.content;
+    const response = completion.choices[0]?.message?.content || 'No response generated';
 
-    if (!response) {
+    return new NextResponse(
+      JSON.stringify({ response, papers }),
+      { headers: { 'Content-Type': 'application/json' } }
+    );
+
+  } catch (error: any) {
+    console.error('Error in chat route:', error);
+
+    // Handle missing API key error specifically
+    if (error.message.includes('OPENAI_API_KEY')) {
       return new NextResponse(
-        JSON.stringify({ error: 'Failed to generate response' }),
+        JSON.stringify({ error: 'OpenAI API key is not configured' }),
         { status: 500, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
     return new NextResponse(
-      JSON.stringify({ response, papers }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
-    );
-
-  } catch (error: any) {
-    console.error('Error in chat route:', error);
-    return new NextResponse(
-      JSON.stringify({ error: error.message || 'Internal server error' }),
-      { status: error.status || 500, headers: { 'Content-Type': 'application/json' } }
+      JSON.stringify({ error: 'An error occurred while processing your request' }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
 }

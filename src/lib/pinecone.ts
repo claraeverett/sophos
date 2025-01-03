@@ -4,23 +4,29 @@ import { getClientCachedData, setClientCachedData } from './cache';
 
 const PINECONE_INDEX_NAME = 'perplexity';
 
-if (!process.env.PINECONE_API_KEY) {
-  throw new Error('Missing PINECONE_API_KEY environment variable');
+export function getPineconeClient() {
+  if (!process.env.PINECONE_API_KEY) {
+    throw new Error('Missing PINECONE_API_KEY environment variable');
+  }
+
+  return new Pinecone({
+    apiKey: process.env.PINECONE_API_KEY,
+  });
 }
 
-if (!process.env.OPENAI_API_KEY) {
-  throw new Error('Missing OPENAI_API_KEY environment variable');
+export function getOpenAIEmbeddings() {
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error('Missing OPENAI_API_KEY environment variable');
+  }
+
+  return new OpenAIEmbeddings({
+    openAIApiKey: process.env.OPENAI_API_KEY,
+  });
 }
 
-// Initialize Pinecone client
-const pinecone = new Pinecone({
-  apiKey: process.env.PINECONE_API_KEY,
-});
-
-// Initialize OpenAI embeddings
-const embeddings = new OpenAIEmbeddings({
-  openAIApiKey: process.env.OPENAI_API_KEY,
-});
+// Initialize clients
+const pinecone = getPineconeClient();
+const embeddings = getOpenAIEmbeddings();
 
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
