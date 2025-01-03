@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { parseStringPromise } from 'xml2js';
 import { getCachedData, setCachedData } from './cache';
+import { indexArxivPaper, type ArxivMetadata } from './pinecone';
 
 export interface ArxivPaper {
   id: string;
@@ -62,14 +63,12 @@ export async function batchIndexArxivPapers(papers: ArxivPaper[], batchSize: num
         categories: paper.categories,
         published: paper.published,
         summary: paper.summary
-      })
+      } as ArxivMetadata)
     ));
   }
 }
 
 export async function fetchPaperContent(paperId: string): Promise<string> {
   const response = await axios.get(`https://arxiv.org/abs/${paperId}`);
-  // Note: This is a simplified version. In production, you'd want to properly parse the PDF
-  // or use arXiv's API to get the full text if available
   return response.data;
 }
