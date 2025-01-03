@@ -50,18 +50,11 @@ export async function initializeIndex() {
   if (!indexList.indexes?.find(index => index.name === PINECONE_INDEX_NAME)) {
     await pinecone.createIndex({
       name: PINECONE_INDEX_NAME,
-      dimension: 1536, // OpenAI embeddings dimension
+      dimension: 1536,
       metric: 'cosine',
-      spec: {
-        serverless: {
-          cloud: 'aws',
-          region: 'us-west-2'
-        }
-      }
     });
-    console.log('Created new Pinecone index:', PINECONE_INDEX_NAME);
   }
-  
+
   const index = pinecone.Index(PINECONE_INDEX_NAME);
   await waitForIndex(index);
   return index;
@@ -79,19 +72,21 @@ export interface ArxivMetadata {
 
 export async function indexArxivPaper(content: string, metadata: ArxivMetadata) {
   const index = await initializeIndex();
-  const embedding = await embeddings.embedQuery(content);
-  
+  const vector = await embeddings.embedQuery(content);
+
   await index.upsert([{
     id: metadata.paperId,
-    values: embedding,
-    metadata: {
-      ...metadata,
-      content
-    }
+    values: vector,
+    metadata
   }]);
 }
 
-export async function queryVectorStore(query: string, topK: number = 3) {
+interface QueryResult {
+  score: number;
+  metadata: ArxivMetadata;
+}
+
+export async function queryVectorStore(query: string, topK: number = 3): Promise<QueryResult[]> {
   // Check if we have a cached embedding for this query
   const cacheKey = `query_embedding:${query}`;
   let queryEmbedding = getClientCachedData<number[]>(cacheKey);
@@ -109,8 +104,19 @@ export async function queryVectorStore(query: string, topK: number = 3) {
     includeMetadata: true,
   });
 
-  return results.matches?.map(match => ({
-    score: match.score,
-    metadata: match.metadata as ArxivMetadata
-  })) || [];
+  return results.matches?.map(match => {
+    const metadata = match.metadata as Record<string, any>;
+    return {
+      score: match.score,
+      metadata: {
+        paperId: metadata.paperId || '',
+        title: metadata.title || '',
+        authors: Array.isArray(metadata.authors) ? metadata.authors : [],
+        categories: Array.isArray(metadata.categories) ? metadata.categories : [],
+        published: metadata.published || '',
+        summary: metadata.summary,
+        url: metadata.url
+      }
+    };
+  }) || [];
 }
