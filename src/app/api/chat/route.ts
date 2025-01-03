@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import { openai } from '@/lib/openai';
 import { queryVectorStore } from '@/lib/pinecone';
-import type { ArxivMetadata } from '@/lib/pinecone';
 import type { ChatCompletionMessageParam } from 'openai/resources/chat';
+
+export const runtime = 'edge';
+export const dynamic = 'force-dynamic';
 
 const SYSTEM_PROMPT = `You are a research assistant analyzing scientific papers. 
 Provide clear insights and connections between papers. Focus on:
@@ -19,12 +21,13 @@ if (!process.env.OPENAI_API_KEY) {
 
 export async function POST(req: Request) {
   try {
-    const { query } = await req.json();
+    const body = await req.json();
+    const query = body?.query;
     
     if (!query || typeof query !== 'string') {
-      return NextResponse.json(
-        { error: 'Query must be a non-empty string' },
-        { status: 400 }
+      return new NextResponse(
+        JSON.stringify({ error: 'Query must be a non-empty string' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
@@ -32,14 +35,14 @@ export async function POST(req: Request) {
     const searchResults = await queryVectorStore(query, 5);
     
     if (!searchResults.length) {
-      return NextResponse.json(
-        { error: 'No relevant papers found for your query' },
-        { status: 404 }
+      return new NextResponse(
+        JSON.stringify({ error: 'No relevant papers found for your query' }),
+        { status: 404, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
     // Format papers for GPT
-    const papers = searchResults.map((result, index) => {
+    const papers = searchResults.map((result) => {
       const metadata = result.metadata;
       const score = result.score;
 
@@ -88,22 +91,22 @@ Relevance Score: ${paper.score.toFixed(3)}
     const response = completion.choices[0]?.message?.content;
 
     if (!response) {
-      return NextResponse.json(
-        { error: 'Failed to generate response' },
-        { status: 500 }
+      return new NextResponse(
+        JSON.stringify({ error: 'Failed to generate response' }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
-    return NextResponse.json({
-      response,
-      papers
-    });
+    return new NextResponse(
+      JSON.stringify({ response, papers }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
+    );
 
   } catch (error: any) {
     console.error('Error in chat route:', error);
-    return NextResponse.json(
-      { error: error.message || 'Internal server error' },
-      { status: error.status || 500 }
+    return new NextResponse(
+      JSON.stringify({ error: error.message || 'Internal server error' }),
+      { status: error.status || 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
 }
