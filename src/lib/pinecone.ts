@@ -80,10 +80,21 @@ export async function indexArxivPaper(content: string, metadata: ArxivMetadata) 
   const index = await initializeIndex();
   const vector = await embeddings.embedQuery(content);
 
+  // Convert ArxivMetadata to Record<string, any> for Pinecone
+  const pineconeMetadata: Record<string, any> = {
+    paperId: metadata.paperId,
+    title: metadata.title,
+    authors: metadata.authors,
+    categories: metadata.categories,
+    published: metadata.published,
+    summary: metadata.summary,
+    url: metadata.url
+  };
+
   await index.upsert([{
     id: metadata.paperId,
     values: vector,
-    metadata
+    metadata: pineconeMetadata
   }]);
 }
 
