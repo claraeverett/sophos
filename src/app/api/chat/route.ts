@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { openai } from '@/lib/openai';
 import { queryVectorStore } from '@/lib/pinecone';
 import type { ArxivMetadata } from '@/lib/pinecone';
+import type { ChatCompletionMessageParam } from 'openai/resources/chat';
 
 const SYSTEM_PROMPT = `You are a research assistant analyzing scientific papers. 
 Provide clear insights and connections between papers. Focus on:
@@ -71,7 +72,7 @@ URL: ${paper.url}
 Relevance Score: ${paper.score.toFixed(3)}
 `).join('\n');
 
-    const messages = [
+    const messages: ChatCompletionMessageParam[] = [
       { role: 'system', content: SYSTEM_PROMPT },
       { role: 'user', content: `Query: ${query}\n\nRelevant Papers:\n${paperDescriptions}` }
     ];
@@ -79,7 +80,7 @@ Relevance Score: ${paper.score.toFixed(3)}
     // Get response from GPT
     const completion = await openai.chat.completions.create({
       model: 'gpt-4',
-      messages: messages,
+      messages,
       temperature: 0.7,
       max_tokens: 1000,
     });
