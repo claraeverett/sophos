@@ -52,6 +52,12 @@ export async function initializeIndex() {
       name: PINECONE_INDEX_NAME,
       dimension: 1536,
       metric: 'cosine',
+      spec: {
+        serverless: {
+          cloud: 'aws',
+          region: 'us-west-2'
+        }
+      }
     });
   }
 
