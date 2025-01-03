@@ -1,6 +1,7 @@
 import * as dotenv from 'dotenv';
 import { Pinecone } from '@pinecone-database/pinecone';
 import { OpenAIEmbeddings } from '@langchain/openai';
+import { getClientCachedData, setClientCachedData } from './cache';
 
 // Load environment variables from .env.local
 dotenv.config({ path: '.env.local' });
@@ -91,14 +92,25 @@ export async function indexArxivPaper(content: string, metadata: ArxivMetadata) 
 }
 
 export async function queryVectorStore(query: string, topK: number = 3) {
-  const index = await initializeIndex();
-  const queryEmbedding = await embeddings.embedQuery(query);
+  // Check if we have a cached embedding for this query
+  const cacheKey = `query_embedding:${query}`;
+  let queryEmbedding = getClientCachedData<number[]>(cacheKey);
+
+  if (!queryEmbedding) {
+    queryEmbedding = await embeddings.embedQuery(query);
+    setClientCachedData(cacheKey, queryEmbedding, 3600); // Cache for 1 hour
+  }
+
+  const index = pinecone.Index(PINECONE_INDEX_NAME);
   
   const results = await index.query({
     vector: queryEmbedding,
     topK,
     includeMetadata: true,
   });
-  
-  return results.matches || [];
+
+  return results.matches?.map(match => ({
+    score: match.score,
+    metadata: match.metadata as ArxivMetadata
+  })) || [];
 }

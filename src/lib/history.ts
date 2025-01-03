@@ -27,6 +27,9 @@ export function addToHistory(query: string): void {
   // Add new item to the beginning and limit the total number
   const updatedHistory = [newItem, ...history].slice(0, MAX_HISTORY_ITEMS);
   localStorage.setItem(HISTORY_KEY, JSON.stringify(updatedHistory));
+  
+  // Dispatch a custom event for the history update
+  window.dispatchEvent(new CustomEvent('historyUpdate'));
 }
 
 export function formatTimestamp(timestamp: number): string {
