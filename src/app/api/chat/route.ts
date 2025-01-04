@@ -17,6 +17,32 @@ Base your analysis only on the provided papers and their content.`;
 
 export async function POST(req: Request) {
   try {
+    // Validate request body
+    const body = await req.json();
+    const query = body?.query;
+    
+    if (!query || typeof query !== 'string' || query.trim().length === 0) {
+      return new NextResponse(
+        JSON.stringify({ error: 'Query must be a non-empty string' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Initialize OpenAI client
+    let openai;
+    try {
+      openai = getOpenAIClient();
+    } catch (error) {
+      console.error('Failed to initialize OpenAI client:', error);
+      return new NextResponse(
+        JSON.stringify({ 
+          error: 'OpenAI API configuration error. Please check the server configuration.',
+          details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Verify environment variables are available
     if (!process.env.OPENAI_API_KEY) {
       return new NextResponse(
@@ -31,19 +57,6 @@ export async function POST(req: Request) {
         { status: 500 }
       );
     }
-
-    const body = await req.json();
-    const query = body?.query;
-    
-    if (!query || typeof query !== 'string' || query.trim().length === 0) {
-      return new NextResponse(
-        JSON.stringify({ error: 'Query must be a non-empty string' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Get OpenAI client (this will throw if OPENAI_API_KEY is missing)
-    const openai = getOpenAIClient();
 
     // Search vector store
     const searchResults = await queryVectorStore(query, 5);

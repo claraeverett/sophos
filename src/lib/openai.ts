@@ -1,23 +1,34 @@
 import OpenAI from 'openai';
 
-export function getOpenAIClient() {
-  // Access environment variable directly for Edge Runtime
+// Helper to get API key with better error handling
+function getApiKey() {
   const apiKey = process.env.OPENAI_API_KEY || process.env.NEXT_PUBLIC_OPENAI_API_KEY;
   
   if (!apiKey) {
-    throw new Error('Missing OPENAI_API_KEY environment variable. Please add it to your Vercel project settings.');
+    console.error('OpenAI API key is not configured. Please check your environment variables.');
+    throw new Error('OpenAI API key not configured. Please add it to your environment variables.');
   }
-
-  return new OpenAI({
-    apiKey,
-    baseURL: 'https://api.openai.com/v1',
-    defaultHeaders: {
-      'Content-Type': 'application/json',
-    },
-    defaultQuery: undefined,
-    fetch: fetch,
-  });
+  
+  return apiKey;
 }
 
-// Don't create a global instance for Edge Runtime
-// export const openai = getOpenAIClient();
+// Singleton instance for better performance
+let openaiInstance: OpenAI | null = null;
+
+export function getOpenAIClient() {
+  if (!openaiInstance) {
+    const apiKey = getApiKey();
+    
+    openaiInstance = new OpenAI({
+      apiKey,
+      baseURL: 'https://api.openai.com/v1',
+      defaultHeaders: {
+        'Content-Type': 'application/json',
+      },
+      defaultQuery: undefined,
+      fetch: fetch,
+    });
+  }
+  
+  return openaiInstance;
+}
