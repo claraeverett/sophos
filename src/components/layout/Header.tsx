@@ -35,12 +35,12 @@ export default function Header({ showHistory = false }: HeaderProps) {
 
   return (
     <>
-      <header className={`sticky top-4 z-50 w-full transition-colors duration-200 ${
-        isScrolled ? 'bg-[#1C1C1F]/80 backdrop-blur-sm' : 'bg-transparent'
+      <header className={`fixed top-0 left-0 right-0 z-50 transition-colors duration-200 ${
+        isScrolled ? 'bg-[#1C1C1F] shadow-lg' : 'bg-[#1C1C1F]'
       }`}>
-        <div className="flex justify-between items-center py-2 px-0 max-w-none mx-4">
-          <div className="flex items-center gap-6 -ml-8">
-            <Link href="/" className="flex items-center gap-3 pl-8">
+        <div className="flex justify-between items-center py-4 px-4 max-w-none mx-auto">
+          <div className="flex items-center gap-6">
+            <Link href="/" className="flex items-center gap-3">
               <div className="text-3xl">
                 <svg 
                   width="32" 
@@ -59,8 +59,6 @@ export default function Header({ showHistory = false }: HeaderProps) {
               </div>
               <span className="text-2xl font-medium text-white">sophos</span>
             </Link>
-          </div>
-          <nav className="flex items-center gap-4">
             {showHistory && (
               <button 
                 onClick={handleNewChat}
@@ -102,10 +100,13 @@ export default function Header({ showHistory = false }: HeaderProps) {
                 </svg>
               </button>
             )}
+          </div>
+          <nav className="flex items-center gap-4">
           </nav>
         </div>
       </header>
-      {showHistory && <HistorySidebar />}
+      <div className="h-16"></div> {/* Spacer to prevent content from going under header */}
+      {isHistoryOpen && <HistorySidebar />}
     </>
   );
 }
