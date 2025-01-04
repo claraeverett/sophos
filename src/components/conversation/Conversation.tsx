@@ -7,10 +7,10 @@ import Results from '../results/Results';
 interface Paper {
   id: string;
   title: string;
-  abstract: string;
-  authors: string[];
+  authors: string | string[];
   categories: string[];
   published: string;
+  abstract?: string;
 }
 
 interface Message {
@@ -22,6 +22,21 @@ interface Message {
 
 interface ConversationProps {
   initialQuery?: string;
+}
+
+// Helper function to format paper URL
+function getPaperUrl(id: string): string {
+  return typeof id === 'string' && id.startsWith('http') 
+    ? id 
+    : `https://arxiv.org/abs/${id}`;
+}
+
+// Helper function to format authors
+function formatAuthors(authors: string | string[]): string {
+  if (Array.isArray(authors)) {
+    return authors.join(', ');
+  }
+  return authors;
 }
 
 export default function Conversation({ initialQuery = '' }: ConversationProps) {
@@ -71,7 +86,7 @@ export default function Conversation({ initialQuery = '' }: ConversationProps) {
         { 
           id: Date.now().toString(), 
           type: 'answer', 
-          content: data.answer,
+          content: data.response,
           papers: data.papers
         }
       ]);
@@ -116,8 +131,8 @@ export default function Conversation({ initialQuery = '' }: ConversationProps) {
                 answer={message.content}
                 sources={message.papers?.map((paper, idx) => ({
                   title: paper.title,
-                  url: paper.id.startsWith('http') ? paper.id : `https://arxiv.org/abs/${paper.id}`,
-                  author: paper.authors.join(', '),
+                  url: getPaperUrl(paper.id),
+                  author: formatAuthors(paper.authors),
                   index: idx + 1
                 })) || []}
               />

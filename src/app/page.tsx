@@ -7,8 +7,6 @@ import ExampleQueries from '@/components/search/ExampleQueries';
 import { useRouter } from 'next/router';
 
 const exampleQueries = [
-  "What are the latest developments in transformer architectures?",
-  "Explain the concept of attention mechanisms in deep learning",
   "How do large language models handle reasoning tasks?",
   "What are the current challenges in reinforcement learning?",
   "Describe recent advances in computer vision architectures",
