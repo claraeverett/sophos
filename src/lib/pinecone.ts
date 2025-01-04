@@ -2,27 +2,25 @@ import { Pinecone } from '@pinecone-database/pinecone';
 import { OpenAIEmbeddings } from '@langchain/openai';
 import { getClientCachedData, setClientCachedData } from './cache';
 
-const PINECONE_INDEX_NAME = 'perplexity';
+function getEnvVar(name: string): string {
+  const value = process.env[name] || process.env[`NEXT_PUBLIC_${name}`];
+  if (!value) {
+    throw new Error(`Missing ${name} environment variable. Please add it to your .env file.`);
+  }
+  return value;
+}
 
 export function getPineconeClient() {
-  const apiKey = process.env.PINECONE_API_KEY || process.env.NEXT_PUBLIC_PINECONE_API_KEY;
+  const apiKey = getEnvVar('PINECONE_API_KEY');
   
-  if (!apiKey) {
-    throw new Error('Missing PINECONE_API_KEY environment variable. Please add it to your Vercel project settings.');
-  }
-
   return new Pinecone({
     apiKey,
   });
 }
 
 export function getOpenAIEmbeddings() {
-  const apiKey = process.env.OPENAI_API_KEY || process.env.NEXT_PUBLIC_OPENAI_API_KEY;
+  const apiKey = getEnvVar('OPENAI_API_KEY');
   
-  if (!apiKey) {
-    throw new Error('Missing OPENAI_API_KEY environment variable. Please add it to your Vercel project settings.');
-  }
-
   return new OpenAIEmbeddings({
     openAIApiKey: apiKey,
   });
@@ -65,11 +63,12 @@ async function waitForIndex(index: any, maxRetries = 5): Promise<void> {
 }
 
 export async function initializeIndex() {
+  const indexName = getEnvVar('PINECONE_INDEX_NAME');
   const indexList = await getPinecone().listIndexes();
   
-  if (!indexList.indexes?.find(index => index.name === PINECONE_INDEX_NAME)) {
+  if (!indexList.indexes?.find(index => index.name === indexName)) {
     await getPinecone().createIndex({
-      name: PINECONE_INDEX_NAME,
+      name: indexName,
       dimension: 1536,
       metric: 'cosine',
       spec: {
@@ -81,7 +80,7 @@ export async function initializeIndex() {
     });
   }
 
-  const index = getPinecone().Index(PINECONE_INDEX_NAME);
+  const index = getPinecone().Index(indexName);
   await waitForIndex(index);
   return index;
 }
@@ -124,59 +123,27 @@ export async function indexArxivPaper(content: string, metadata: ArxivMetadata) 
   await index.upsert([{
     id: metadata.paperId,
     values: vector,
-    metadata: pineconeMetadata
+    metadata: pineconeMetadata,
   }]);
 }
 
-interface QueryResult {
+export interface QueryResult {
   score: number;
   metadata: ArxivMetadata;
 }
 
 export async function queryVectorStore(query: string, topK: number = 3): Promise<QueryResult[]> {
-  // Check if we have a cached embedding for this query
-  const cacheKey = `query_embedding:${query}`;
-  let queryEmbedding = getClientCachedData<number[]>(cacheKey);
+  const index = await initializeIndex();
+  const queryEmbedding = await getEmbeddings().embedQuery(query);
 
-  if (!queryEmbedding) {
-    queryEmbedding = await getEmbeddings().embedQuery(query);
-    setClientCachedData(cacheKey, queryEmbedding, 3600); // Cache for 1 hour
-  }
-
-  const index = getPinecone().Index(PINECONE_INDEX_NAME);
-  
   const results = await index.query({
     vector: queryEmbedding,
     topK,
     includeMetadata: true,
   });
 
-  if (!results.matches) return [];
-
-  return results.matches.map(match => {
-    if (!match.score || !match.metadata) {
-      throw new Error('Invalid match data from Pinecone');
-    }
-
-    const metadata = match.metadata as Record<string, any>;
-    const arxivMetadata: ArxivMetadata = {
-      paperId: metadata.paperId || '',
-      title: metadata.title || '',
-      authors: Array.isArray(metadata.authors) ? metadata.authors : [],
-      categories: Array.isArray(metadata.categories) ? metadata.categories : [],
-      published: metadata.published || '',
-      summary: metadata.summary || '',
-      url: metadata.url,
-      doi: metadata.doi,
-      journalRef: metadata.journalRef,
-      license: metadata.license,
-      updateDate: metadata.updateDate,
-      version: metadata.version
-    };
-
-    return {
-      score: match.score,
-      metadata: arxivMetadata
-    };
-  });
+  return results.matches.map(match => ({
+    score: match.score || 0,
+    metadata: match.metadata as ArxivMetadata,
+  }));
 }
