@@ -126,7 +126,7 @@ ${paper.summary}
 
 Written by these brilliant minds: ${paper.authors.join(', ')} ✍️
 
-Research Areas: ${paper.categories.map(cat => {
+Research Areas: ${paper.categories.map((cat: string) => {
   // Make category names more friendly
   const friendlyNames: Record<string, string> = {
     'cs.AI': '🤖 Artificial Intelligence',
