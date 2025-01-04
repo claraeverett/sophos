@@ -104,7 +104,7 @@ function saveProgress(progress: IngestionProgress) {
   writeFileSync(CONFIG.progressFile, JSON.stringify(progress, null, 2));
 }
 
-async function ingestPaper(paper: any, progress: IngestionProgress, retryCount = 0): Promise<void> {
+async function ingestPaper(paper: any, progress: IngestionProgress, retries = 0): Promise<void> {
   try {
     // Skip if already processed
     if (progress.completedPapers.includes(paper.id)) {
@@ -168,13 +168,16 @@ Want to learn more? Check it out here: https://arxiv.org/abs/${paper.id} 📖
     progress.completedPapers.push(paper.id);
     console.log(`✨ Just finished reading "${paper.title}" - fascinating stuff!`);
   } catch (error) {
-    if (retryCount < CONFIG.maxRetries) {
-      console.warn(`📝 Hmm, had some trouble with "${paper.title}" (try ${retryCount + 1}/${CONFIG.maxRetries}). Let me give it another shot...`);
-      await new Promise(resolve => setTimeout(resolve, CONFIG.retryDelay));
-      return ingestPaper(paper, progress, retryCount + 1);
+    if (retries < CONFIG.maxRetries) {
+      console.log(`⚠️ Attempt ${retries + 1} failed for "${paper.title}". Retrying...`);
+      await new Promise(resolve => setTimeout(resolve, Math.pow(2, retries) * 1000));
+      return ingestPaper(paper, progress, retries + 1);
     }
     
-    progress.failedPapers.push({ id: paper.id, error: error.message });
+    progress.failedPapers.push({ 
+      id: paper.id, 
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
+    });
     console.error(`❌ Unfortunately, I couldn't process "${paper.title}" after ${CONFIG.maxRetries} attempts:`, error);
   } finally {
     saveProgress(progress);

@@ -144,6 +144,19 @@ export async function queryVectorStore(query: string, topK: number = 3): Promise
 
   return results.matches.map(match => ({
     score: match.score || 0,
-    metadata: match.metadata as ArxivMetadata,
+    metadata: {
+      paperId: match.metadata?.paperId as string,
+      title: match.metadata?.title as string,
+      authors: match.metadata?.authors as string[],
+      categories: match.metadata?.categories as string[],
+      published: match.metadata?.published as string,
+      summary: match.metadata?.summary,
+      url: match.metadata?.url,
+      doi: match.metadata?.doi,
+      journalRef: match.metadata?.journalRef,
+      license: match.metadata?.license,
+      updateDate: match.metadata?.updateDate,
+      version: match.metadata?.version,
+    } as ArxivMetadata,
   }));
 }
