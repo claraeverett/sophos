@@ -32,12 +32,12 @@ export async function POST(req: Request) {
     let openai;
     try {
       openai = getOpenAIClient();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to initialize OpenAI client:', error);
       return new NextResponse(
         JSON.stringify({ 
           error: 'OpenAI API configuration error. Please check the server configuration.',
-          details: process.env.NODE_ENV === 'development' ? error.message : undefined
+          details: process.env.NODE_ENV === 'development' ? error?.message || 'Unknown error' : undefined
         }),
         { status: 500, headers: { 'Content-Type': 'application/json' } }
       );
