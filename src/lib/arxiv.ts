@@ -8,7 +8,7 @@ const CACHE_TTL = 3600; // 1 hour
 const MAX_RETRIES = 5;
 const BASE_DELAY = 1000; // 1 second base delay
 
-interface ArxivPaper {
+export interface ArxivPaper {
   id: string;
   title: string;
   summary: string;
