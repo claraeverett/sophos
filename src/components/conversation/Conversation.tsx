@@ -3,23 +3,8 @@
 import { useState, useEffect, useRef } from 'react';
 import SearchBar from '../search/SearchBar';
 import Results from '../results/Results';
-
-interface Paper {
-  id: string;
-  title: string;
-  authors: string[];
-  categories: string[];
-  published: string;
-  summary?: string;
-  url?: string;
-}
-
-interface Message {
-  id: string;
-  type: 'question' | 'answer' | 'error';
-  content: string;
-  papers?: Paper[];
-}
+import { Message, Paper } from '@/types/chat';
+import { saveMessages, getMessages } from '@/lib/messageStorage';
 
 interface ConversationProps {
   initialQuery?: string;
@@ -43,6 +28,23 @@ export default function Conversation({ initialQuery = '' }: ConversationProps) {
   const [isLoading, setIsLoading] = useState(false);
   const initialQueryProcessed = useRef(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Load messages from storage when component mounts or query changes
+  useEffect(() => {
+    if (query) {
+      const storedMessages = getMessages(query);
+      if (storedMessages) {
+        setMessages(storedMessages);
+      }
+    }
+  }, [query]);
+
+  // Save messages to storage whenever they change
+  useEffect(() => {
+    if (query && messages.length > 0) {
+      saveMessages(query, messages);
+    }
+  }, [query, messages]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
