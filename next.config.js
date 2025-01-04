@@ -2,9 +2,9 @@
 const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
-  env: {
-    PINECONE_API_KEY: process.env.PINECONE_API_KEY,
-    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+  experimental: {
+    runtime: 'edge',
+    serverActions: true,
   },
   webpack: (config, { isServer }) => {
     if (!isServer) {
@@ -20,7 +20,7 @@ const nextConfig = {
   },
   // Increase the timeout for serverless functions
   serverRuntimeConfig: {
-    timeoutSeconds: 60,
+    timeoutMs: 30000,
   },
 }
 

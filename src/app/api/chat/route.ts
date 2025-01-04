@@ -3,8 +3,10 @@ import { getOpenAIClient } from '@/lib/openai';
 import { queryVectorStore } from '@/lib/pinecone';
 import type { ChatCompletionMessageParam } from 'openai/resources/chat';
 
+// Configure Edge Runtime
 export const runtime = 'edge';
 export const dynamic = 'force-dynamic';
+export const preferredRegion = 'auto';
 
 const SYSTEM_PROMPT = `You are a research assistant analyzing scientific papers. 
 Provide clear insights and connections between papers. Focus on:
