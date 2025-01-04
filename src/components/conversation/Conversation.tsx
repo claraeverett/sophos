@@ -7,10 +7,11 @@ import Results from '../results/Results';
 interface Paper {
   id: string;
   title: string;
-  authors: string | string[];
+  authors: string[];
   categories: string[];
   published: string;
-  abstract?: string;
+  summary?: string;
+  url?: string;
 }
 
 interface Message {
@@ -25,18 +26,15 @@ interface ConversationProps {
 }
 
 // Helper function to format paper URL
-function getPaperUrl(id: string): string {
-  return typeof id === 'string' && id.startsWith('http') 
-    ? id 
-    : `https://arxiv.org/abs/${id}`;
+function getPaperUrl(paper: Paper): string {
+  if (paper.url) return paper.url;
+  if (paper.id) return `https://arxiv.org/abs/${paper.id}`;
+  return '#';
 }
 
 // Helper function to format authors
-function formatAuthors(authors: string | string[]): string {
-  if (Array.isArray(authors)) {
-    return authors.join(', ');
-  }
-  return authors;
+function formatAuthors(authors: string[]): string {
+  return Array.isArray(authors) ? authors.join(', ') : authors;
 }
 
 export default function Conversation({ initialQuery = '' }: ConversationProps) {
@@ -131,7 +129,7 @@ export default function Conversation({ initialQuery = '' }: ConversationProps) {
                 answer={message.content}
                 sources={message.papers?.map((paper, idx) => ({
                   title: paper.title,
-                  url: getPaperUrl(paper.id),
+                  url: getPaperUrl(paper),
                   author: formatAuthors(paper.authors),
                   index: idx + 1
                 })) || []}

@@ -74,15 +74,14 @@ export async function POST(req: Request) {
       const score = result.score;
 
       // Ensure we have a valid URL for the paper
-      let paperUrl = metadata.url;
-      if (!paperUrl && metadata.paperId) {
-        paperUrl = `https://arxiv.org/abs/${metadata.paperId}`;
-      }
+      const paperId = metadata.paperId || metadata.id;
+      const paperUrl = metadata.url || (paperId ? `https://arxiv.org/abs/${paperId}` : undefined);
 
       return {
+        id: paperId,
         title: metadata.title,
-        authors: metadata.authors.join(', '),
-        categories: metadata.categories.join(', '),
+        authors: metadata.authors,
+        categories: metadata.categories,
         summary: metadata.summary || '',
         published: metadata.published,
         url: paperUrl,
@@ -94,8 +93,8 @@ export async function POST(req: Request) {
     const paperDescriptions = papers.map((paper, index) => `
 Paper ${index + 1}:
 Title: ${paper.title}
-Authors: ${paper.authors}
-Categories: ${paper.categories}
+Authors: ${paper.authors.join(', ')}
+Categories: ${paper.categories.join(', ')}
 Published: ${paper.published}
 Summary: ${paper.summary}
 URL: ${paper.url}
