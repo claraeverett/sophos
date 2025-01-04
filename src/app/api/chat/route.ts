@@ -25,6 +25,13 @@ export async function POST(req: Request) {
       );
     }
 
+    if (!process.env.PINECONE_API_KEY) {
+      return new NextResponse(
+        JSON.stringify({ error: 'Pinecone API key not configured' }),
+        { status: 500 }
+      );
+    }
+
     const body = await req.json();
     const query = body?.query;
     
@@ -109,6 +116,13 @@ Relevance Score: ${paper.score.toFixed(3)}
     if (error.message.includes('OPENAI_API_KEY')) {
       return new NextResponse(
         JSON.stringify({ error: 'OpenAI API key is not configured' }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (error.message.includes('Pinecone')) {
+      return new NextResponse(
+        JSON.stringify({ error: 'An error occurred while querying the vector store' }),
         { status: 500, headers: { 'Content-Type': 'application/json' } }
       );
     }

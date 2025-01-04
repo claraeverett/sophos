@@ -5,28 +5,46 @@ import { getClientCachedData, setClientCachedData } from './cache';
 const PINECONE_INDEX_NAME = 'perplexity';
 
 export function getPineconeClient() {
-  if (!process.env.PINECONE_API_KEY) {
-    throw new Error('Missing PINECONE_API_KEY environment variable');
+  const apiKey = process.env.PINECONE_API_KEY || process.env.NEXT_PUBLIC_PINECONE_API_KEY;
+  
+  if (!apiKey) {
+    throw new Error('Missing PINECONE_API_KEY environment variable. Please add it to your Vercel project settings.');
   }
 
   return new Pinecone({
-    apiKey: process.env.PINECONE_API_KEY,
+    apiKey,
   });
 }
 
 export function getOpenAIEmbeddings() {
-  if (!process.env.OPENAI_API_KEY) {
-    throw new Error('Missing OPENAI_API_KEY environment variable');
+  const apiKey = process.env.OPENAI_API_KEY || process.env.NEXT_PUBLIC_OPENAI_API_KEY;
+  
+  if (!apiKey) {
+    throw new Error('Missing OPENAI_API_KEY environment variable. Please add it to your Vercel project settings.');
   }
 
   return new OpenAIEmbeddings({
-    openAIApiKey: process.env.OPENAI_API_KEY,
+    openAIApiKey: apiKey,
   });
 }
 
-// Initialize clients
-const pinecone = getPineconeClient();
-const embeddings = getOpenAIEmbeddings();
+// Initialize clients lazily to avoid issues with Edge Runtime
+let pineconeClient: Pinecone | null = null;
+let embeddingsClient: OpenAIEmbeddings | null = null;
+
+export function getPinecone() {
+  if (!pineconeClient) {
+    pineconeClient = getPineconeClient();
+  }
+  return pineconeClient;
+}
+
+export function getEmbeddings() {
+  if (!embeddingsClient) {
+    embeddingsClient = getOpenAIEmbeddings();
+  }
+  return embeddingsClient;
+}
 
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -47,10 +65,10 @@ async function waitForIndex(index: any, maxRetries = 5): Promise<void> {
 }
 
 export async function initializeIndex() {
-  const indexList = await pinecone.listIndexes();
+  const indexList = await getPinecone().listIndexes();
   
   if (!indexList.indexes?.find(index => index.name === PINECONE_INDEX_NAME)) {
-    await pinecone.createIndex({
+    await getPinecone().createIndex({
       name: PINECONE_INDEX_NAME,
       dimension: 1536,
       metric: 'cosine',
@@ -63,7 +81,7 @@ export async function initializeIndex() {
     });
   }
 
-  const index = pinecone.Index(PINECONE_INDEX_NAME);
+  const index = getPinecone().Index(PINECONE_INDEX_NAME);
   await waitForIndex(index);
   return index;
 }
@@ -80,7 +98,7 @@ export interface ArxivMetadata {
 
 export async function indexArxivPaper(content: string, metadata: ArxivMetadata) {
   const index = await initializeIndex();
-  const vector = await embeddings.embedQuery(content);
+  const vector = await getEmbeddings().embedQuery(content);
 
   // Convert ArxivMetadata to Record<string, any> for Pinecone
   const pineconeMetadata: Record<string, any> = {
@@ -111,11 +129,11 @@ export async function queryVectorStore(query: string, topK: number = 3): Promise
   let queryEmbedding = getClientCachedData<number[]>(cacheKey);
 
   if (!queryEmbedding) {
-    queryEmbedding = await embeddings.embedQuery(query);
+    queryEmbedding = await getEmbeddings().embedQuery(query);
     setClientCachedData(cacheKey, queryEmbedding, 3600); // Cache for 1 hour
   }
 
-  const index = pinecone.Index(PINECONE_INDEX_NAME);
+  const index = getPinecone().Index(PINECONE_INDEX_NAME);
   
   const results = await index.query({
     vector: queryEmbedding,
