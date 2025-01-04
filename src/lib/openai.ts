@@ -1,9 +1,11 @@
 import OpenAI from 'openai';
 
 export function getOpenAIClient() {
-  const apiKey = process.env.OPENAI_API_KEY;
+  // Access environment variable directly for Edge Runtime
+  const apiKey = process.env.OPENAI_API_KEY || process.env.NEXT_PUBLIC_OPENAI_API_KEY;
+  
   if (!apiKey) {
-    throw new Error('Missing OPENAI_API_KEY environment variable');
+    throw new Error('Missing OPENAI_API_KEY environment variable. Please add it to your Vercel project settings.');
   }
 
   return new OpenAI({
