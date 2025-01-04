@@ -74,7 +74,7 @@ export async function POST(req: Request) {
       const score = result.score;
 
       // Ensure we have a valid URL for the paper
-      const paperId = metadata.paperId || metadata.id;
+      const paperId = metadata.paperId;
       const paperUrl = metadata.url || (paperId ? `https://arxiv.org/abs/${paperId}` : undefined);
 
       return {

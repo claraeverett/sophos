@@ -94,6 +94,11 @@ export interface ArxivMetadata {
   published: string;
   summary?: string;
   url?: string;
+  doi?: string;
+  journalRef?: string;
+  license?: string;
+  updateDate?: string;
+  version?: number;
 }
 
 export async function indexArxivPaper(content: string, metadata: ArxivMetadata) {
@@ -108,7 +113,12 @@ export async function indexArxivPaper(content: string, metadata: ArxivMetadata) 
     categories: metadata.categories,
     published: metadata.published,
     summary: metadata.summary,
-    url: metadata.url
+    url: metadata.url,
+    doi: metadata.doi,
+    journalRef: metadata.journalRef,
+    license: metadata.license,
+    updateDate: metadata.updateDate,
+    version: metadata.version
   };
 
   await index.upsert([{
@@ -156,7 +166,12 @@ export async function queryVectorStore(query: string, topK: number = 3): Promise
       categories: Array.isArray(metadata.categories) ? metadata.categories : [],
       published: metadata.published || '',
       summary: metadata.summary || '',
-      url: metadata.url
+      url: metadata.url,
+      doi: metadata.doi,
+      journalRef: metadata.journalRef,
+      license: metadata.license,
+      updateDate: metadata.updateDate,
+      version: metadata.version
     };
 
     return {
