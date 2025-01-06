@@ -18,7 +18,16 @@ Base your analysis only on the provided papers and their content.`;
 export async function POST(req: Request) {
   try {
     // Validate request body
-    const body = await req.json();
+    let body;
+    try {
+      body = await req.json();
+    } catch (error) {
+      return new NextResponse(
+        JSON.stringify({ error: 'Invalid JSON in request body' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
     const query = body?.query;
     
     if (!query || typeof query !== 'string' || query.trim().length === 0) {
@@ -47,19 +56,28 @@ export async function POST(req: Request) {
     if (!process.env.OPENAI_API_KEY) {
       return new NextResponse(
         JSON.stringify({ error: 'OpenAI API key not configured' }),
-        { status: 500 }
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
     if (!process.env.PINECONE_API_KEY) {
       return new NextResponse(
         JSON.stringify({ error: 'Pinecone API key not configured' }),
-        { status: 500 }
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
     // Search vector store
-    const searchResults = await queryVectorStore(query, 5);
+    let searchResults;
+    try {
+      searchResults = await queryVectorStore(query, 5);
+    } catch (error: any) {
+      console.error('Vector store query error:', error);
+      return new NextResponse(
+        JSON.stringify({ error: 'Failed to search papers. Please try again.' }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
     
     if (!searchResults.length) {
       return new NextResponse(
@@ -107,41 +125,48 @@ Relevance Score: ${paper.score.toFixed(3)}
     ];
 
     // Get response from GPT
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4',
-      messages,
-      temperature: 0.7,
-      max_tokens: 1000,
-    });
+    let completion;
+    try {
+      completion = await openai.chat.completions.create({
+        model: 'gpt-4',
+        messages,
+        temperature: 0.7,
+        max_tokens: 1000,
+      });
+    } catch (error: any) {
+      console.error('OpenAI API error:', error);
+      return new NextResponse(
+        JSON.stringify({ error: 'Failed to generate response. Please try again.' }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
 
-    const response = completion.choices[0]?.message?.content || 'No response generated';
+    const response = completion.choices[0]?.message?.content;
+    if (!response) {
+      return new NextResponse(
+        JSON.stringify({ error: 'No response generated' }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
 
     return new NextResponse(
       JSON.stringify({ response, papers }),
-      { headers: { 'Content-Type': 'application/json' } }
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
     );
 
   } catch (error: any) {
     console.error('Error in chat route:', error);
 
-    // Handle missing API key error specifically
-    if (error.message.includes('OPENAI_API_KEY')) {
-      return new NextResponse(
-        JSON.stringify({ error: 'OpenAI API key is not configured' }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
-
-    if (error.message.includes('Pinecone')) {
-      return new NextResponse(
-        JSON.stringify({ error: 'An error occurred while querying the vector store' }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
-
+    // Ensure we always return a proper JSON response
     return new NextResponse(
-      JSON.stringify({ error: 'An error occurred while processing your request' }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
+      JSON.stringify({ 
+        error: 'An unexpected error occurred. Please try again.',
+        details: process.env.NODE_ENV === 'development' ? error?.message : undefined
+      }),
+      { 
+        status: 500, 
+        headers: { 'Content-Type': 'application/json' } 
+      }
     );
   }
 }

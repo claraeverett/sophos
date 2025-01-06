@@ -28,10 +28,11 @@ export default function Conversation({ initialQuery = '' }: ConversationProps) {
   const [isLoading, setIsLoading] = useState(false);
   const initialQueryProcessed = useRef(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const isInitialQuery = useRef(true); // Track if this is the initial query from home page
 
   // Load messages from storage when component mounts or query changes
   useEffect(() => {
-    if (query) {
+    if (query && !isInitialQuery.current) {
       const storedMessages = getMessages(query);
       if (storedMessages) {
         setMessages(storedMessages);
@@ -41,7 +42,7 @@ export default function Conversation({ initialQuery = '' }: ConversationProps) {
 
   // Save messages to storage whenever they change
   useEffect(() => {
-    if (query && messages.length > 0) {
+    if (query && messages.length > 0 && !isInitialQuery.current) {
       saveMessages(query, messages);
     }
   }, [query, messages]);
@@ -54,26 +55,50 @@ export default function Conversation({ initialQuery = '' }: ConversationProps) {
     scrollToBottom();
   }, [messages]); // Scroll when messages change
 
-  const askQuestion = async (query: string) => {
-    console.log('Asking question:', query);
+  const askQuestion = async (newQuery: string) => {
+    console.log('Asking question:', newQuery);
+    setQuery(newQuery);
     
-    // Immediately add the question to the messages
+    // Only check stored messages if not initial query
+    if (!isInitialQuery.current) {
+      const storedMessages = getMessages(newQuery);
+      if (storedMessages) {
+        setMessages(storedMessages);
+        return;
+      }
+    }
+    
     const questionId = Date.now().toString();
     setMessages(prev => [...prev, 
-      { id: questionId, type: 'question', content: query }
+      { id: questionId, type: 'question', content: newQuery }
     ]);
     
     setIsLoading(true);
+    let response;
     
     try {
-      const response = await fetch('/api/chat', {
+      response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ query }),
+        body: JSON.stringify({ query: newQuery }),
       });
+    } catch (networkError) {
+      console.error('Network error:', networkError);
+      setMessages(prev => [...prev, 
+        { 
+          id: Date.now().toString(), 
+          type: 'error', 
+          content: 'Failed to connect to server. Please check your internet connection and try again.',
+        }
+      ]);
+      setIsLoading(false);
+      isInitialQuery.current = false;
+      return;
+    }
 
+    try {
       const data = await response.json();
       console.log('Response data:', data);
 
@@ -81,7 +106,6 @@ export default function Conversation({ initialQuery = '' }: ConversationProps) {
         throw new Error(data.error || 'Failed to fetch response');
       }
 
-      // Add only the answer since question is already added
       setMessages(prev => [...prev, 
         { 
           id: Date.now().toString(), 
@@ -92,16 +116,26 @@ export default function Conversation({ initialQuery = '' }: ConversationProps) {
       ]);
     } catch (error) {
       console.error('Error:', error);
-      // Add only the error answer since question is already added
+      let errorMessage = 'An error occurred while processing your request.';
+      
+      if (error instanceof Error) {
+        if (error.message.includes('JSON')) {
+          errorMessage = 'Server returned an invalid response. Please try again.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       setMessages(prev => [...prev, 
         { 
           id: Date.now().toString(), 
           type: 'error', 
-          content: error instanceof Error ? error.message : 'An error occurred while processing your request.',
+          content: errorMessage,
         }
       ]);
     } finally {
       setIsLoading(false);
+      isInitialQuery.current = false;
     }
   };
 
@@ -109,6 +143,7 @@ export default function Conversation({ initialQuery = '' }: ConversationProps) {
     if (initialQuery && !initialQueryProcessed.current) {
       console.log('Processing initial query:', initialQuery);
       initialQueryProcessed.current = true;
+      isInitialQuery.current = true; // Ensure initial query is treated as new
       askQuestion(initialQuery);
     }
   }, [initialQuery]);
